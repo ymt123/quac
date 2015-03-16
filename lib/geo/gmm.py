@@ -14,7 +14,7 @@ import time
 from django.contrib.gis import geos
 import matplotlib.pyplot as plt  # for testing
 import numpy as np
-import osgeo.gdal as ogdal
+#import osgeo.gdal as ogdal
 from sklearn.datasets.samples_generator import make_blobs
 import sklearn.mixture
 
@@ -581,93 +581,93 @@ class Geo_GMM(base.Location_Estimate, sklearn.mixture.GMM):
       scores = [(i, self.likelihood_polygon(p))
                 for (i,p) in enumerate(polygons)]
       return [(i, s) for (i,s) in scores if s >= threshold]
-
-   def dump_geoimage(self, basename, width_px):
-      # FIXME: This method is a mess and needs to be cleaned & split into
-      # several other methods.
-      #
-      # The GDAL documentation for Python is pretty poor, so this is cobbled
-      # together from a bunch of Googling. Notable sources:
-      #
-      #   https://gist.github.com/205115
-      #   http://www.gdal.org/gdal_tutorial.html
-      #   http://trac.osgeo.org/gdal/wiki/PythonGotcha
-      #   http://www.gdal.org/frmt_gtiff.html
-
-      # Find the bounds and image dimensions in this estimate's SRS, aiming
-      # for square pixels (which of course may not be square in other SRS).
-      def t(xy):
-         return srs.transform(geos.Point(xy, srid=srs.SRID_WGS84), self.srid)
-      xmin = t((base.GEOIMG_LONMIN, 0)).x
-      xmax = t((base.GEOIMG_LONMAX, 0)).x
-      ymin = t((0, base.GEOIMG_LATMIN)).y
-      ymax = t((0, base.GEOIMG_LATMAX)).y
-      height_px = int(width_px * (xmax - xmin) / (ymax - ymin))
-
-      # Evaluate the model across the world. (FIXME: This could be sped up
-      # with some smarter choices of bounds.) (FIXME: should we have
-      # endpoint=False?)
-      xs = np.linspace(xmin, xmax, num=width_px)
-      ys = np.linspace(ymin, ymax, num=height_px)
-      xys = np.dstack(np.meshgrid(xs, ys)).reshape((width_px * height_px, 2))
-      # FIXME: Token GMMs have a bad self.score, introduced by optimize.py;
-      # see issue #32. This works around the problem in unpickled objects that
-      # can't be fixed by simply updating the code; it patches the live
-      # objects to restore the method. It should be removed when no longer
-      # needed.
-      l.warning('workaround code for private issue #32 active')
-      import numpy
-      if (isinstance(self.score, numpy.float64)):
-         l.debug('workaround code for private issue #32 triggered')
-         from types import MethodType
-         self.score = MethodType(self.__class__.score, self, self.__class__)
-      probs = score_to_prob(self.score(xys))
-      probs = probs.reshape((height_px, width_px))
-
-      # FIXME: There is a bug in libgdal
-      # (http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=695060) which
-      # prevents it from correctly interpreting files that have distance units
-      # other than meters. Thus, if we are using one of our SRS with km or Mm
-      # units, use the following kludge to convert the result to the
-      # meter-based equivalent.
-      srid_export = self.srid
-      (base_srid, r) = divmod(self.srid, 10)
-      if (base_srid >= 10000):
-         srid_export = base_srid
-         [xmin, xmax, ymin, ymax] = [x*10**r for x in [xmin, xmax, ymin, ymax]]
-
-      # Write the results as a GeoTIFF. First transformation is to boost the
-      # low values to make them more visible in the plot. b>0 is "bendiness".
-      l.debug("max probability before bending = %g" % (probs.max()))
-      b = 4.0
-      probs = (b * probs + probs) / (b * probs + 1)
-      l.debug("max probability after bending = %g" % (probs.max()))
-      # We scale the probability range to [0,255] so that we can use the Byte
-      # type and JPEG compression (which saves approximately 30x).
-      probs = (255/probs.max() * probs).clip(0, 255).astype(np.uint8)
-      driver = ogdal.GetDriverByName('GTiff')
-      out = driver.Create(basename + '.tif',
-                          width_px, height_px, 1, ogdal.GDT_Byte,
-                          ['COMPRESS=JPEG', 'JPEG_QUALITY=95',
-                           'PHOTOMETRIC=MINISWHITE'])
-      # arbitrary key, value metadata; doesn't appear in QGIS
-      #out.SetMetadataItem('foo', 'bar')
-      # Affine transform from image space to projected space. I don't quite
-      # understand what is going on here; the resulting image has upper left
-      # and lower left corners reversed according to gdalinfo (and same for
-      # right). However, it displays fine in QGIS. An alternative is to offer
-      # ymax and invert the pixel size (making it negative), which gives
-      # corners that seem right but then the image is upside down.
-      # http://gdal.org/classGDALDataset.html#af9593cc241e7d140f5f3c4798a43a668
-      out.SetGeoTransform([xmin, (xmax - xmin) / width_px, 0,
-                           ymin, 0, (ymax - ymin) / height_px])
-      out.SetProjection(srs.SRS[srid_export].wkt)
-      out.GetRasterBand(1).WriteArray(probs)
-      # In order to correctly display in QGIS, you need to compute the exact
-      # statistics. A bug prevents QGIS from doing this
-      # http://hub.qgis.org/issues/6496(), and also if use this call, then
-      # it's embedded in the file and no auxiliary .xml file is created.
-      out.GetRasterBand(1).GetStatistics(0,1)
+   #
+   # def dump_geoimage(self, basename, width_px):
+   #    # FIXME: This method is a mess and needs to be cleaned & split into
+   #    # several other methods.
+   #    #
+   #    # The GDAL documentation for Python is pretty poor, so this is cobbled
+   #    # together from a bunch of Googling. Notable sources:
+   #    #
+   #    #   https://gist.github.com/205115
+   #    #   http://www.gdal.org/gdal_tutorial.html
+   #    #   http://trac.osgeo.org/gdal/wiki/PythonGotcha
+   #    #   http://www.gdal.org/frmt_gtiff.html
+   #
+   #    # Find the bounds and image dimensions in this estimate's SRS, aiming
+   #    # for square pixels (which of course may not be square in other SRS).
+   #    def t(xy):
+   #       return srs.transform(geos.Point(xy, srid=srs.SRID_WGS84), self.srid)
+   #    xmin = t((base.GEOIMG_LONMIN, 0)).x
+   #    xmax = t((base.GEOIMG_LONMAX, 0)).x
+   #    ymin = t((0, base.GEOIMG_LATMIN)).y
+   #    ymax = t((0, base.GEOIMG_LATMAX)).y
+   #    height_px = int(width_px * (xmax - xmin) / (ymax - ymin))
+   #
+   #    # Evaluate the model across the world. (FIXME: This could be sped up
+   #    # with some smarter choices of bounds.) (FIXME: should we have
+   #    # endpoint=False?)
+   #    xs = np.linspace(xmin, xmax, num=width_px)
+   #    ys = np.linspace(ymin, ymax, num=height_px)
+   #    xys = np.dstack(np.meshgrid(xs, ys)).reshape((width_px * height_px, 2))
+   #    # FIXME: Token GMMs have a bad self.score, introduced by optimize.py;
+   #    # see issue #32. This works around the problem in unpickled objects that
+   #    # can't be fixed by simply updating the code; it patches the live
+   #    # objects to restore the method. It should be removed when no longer
+   #    # needed.
+   #    l.warning('workaround code for private issue #32 active')
+   #    import numpy
+   #    if (isinstance(self.score, numpy.float64)):
+   #       l.debug('workaround code for private issue #32 triggered')
+   #       from types import MethodType
+   #       self.score = MethodType(self.__class__.score, self, self.__class__)
+   #    probs = score_to_prob(self.score(xys))
+   #    probs = probs.reshape((height_px, width_px))
+   #
+   #    # FIXME: There is a bug in libgdal
+   #    # (http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=695060) which
+   #    # prevents it from correctly interpreting files that have distance units
+   #    # other than meters. Thus, if we are using one of our SRS with km or Mm
+   #    # units, use the following kludge to convert the result to the
+   #    # meter-based equivalent.
+   #    srid_export = self.srid
+   #    (base_srid, r) = divmod(self.srid, 10)
+   #    if (base_srid >= 10000):
+   #       srid_export = base_srid
+   #       [xmin, xmax, ymin, ymax] = [x*10**r for x in [xmin, xmax, ymin, ymax]]
+   #
+   #    # Write the results as a GeoTIFF. First transformation is to boost the
+   #    # low values to make them more visible in the plot. b>0 is "bendiness".
+   #    l.debug("max probability before bending = %g" % (probs.max()))
+   #    b = 4.0
+   #    probs = (b * probs + probs) / (b * probs + 1)
+   #    l.debug("max probability after bending = %g" % (probs.max()))
+   #    # We scale the probability range to [0,255] so that we can use the Byte
+   #    # type and JPEG compression (which saves approximately 30x).
+   #    probs = (255/probs.max() * probs).clip(0, 255).astype(np.uint8)
+   #    driver = ogdal.GetDriverByName('GTiff')
+   #    out = driver.Create(basename + '.tif',
+   #                        width_px, height_px, 1, ogdal.GDT_Byte,
+   #                        ['COMPRESS=JPEG', 'JPEG_QUALITY=95',
+   #                         'PHOTOMETRIC=MINISWHITE'])
+   #    # arbitrary key, value metadata; doesn't appear in QGIS
+   #    #out.SetMetadataItem('foo', 'bar')
+   #    # Affine transform from image space to projected space. I don't quite
+   #    # understand what is going on here; the resulting image has upper left
+   #    # and lower left corners reversed according to gdalinfo (and same for
+   #    # right). However, it displays fine in QGIS. An alternative is to offer
+   #    # ymax and invert the pixel size (making it negative), which gives
+   #    # corners that seem right but then the image is upside down.
+   #    # http://gdal.org/classGDALDataset.html#af9593cc241e7d140f5f3c4798a43a668
+   #    out.SetGeoTransform([xmin, (xmax - xmin) / width_px, 0,
+   #                         ymin, 0, (ymax - ymin) / height_px])
+   #    out.SetProjection(srs.SRS[srid_export].wkt)
+   #    out.GetRasterBand(1).WriteArray(probs)
+   #    # In order to correctly display in QGIS, you need to compute the exact
+   #    # statistics. A bug prevents QGIS from doing this
+   #    # http://hub.qgis.org/issues/6496(), and also if use this call, then
+   #    # it's embedded in the file and no auxiliary .xml file is created.
+   #    out.GetRasterBand(1).GetStatistics(0,1)
 
    def features(self, identity=True, misc=True):
       '''Return an OrderedDict of some features that might be worth judging
